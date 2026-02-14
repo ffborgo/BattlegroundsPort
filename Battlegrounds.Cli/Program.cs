@@ -8,12 +8,16 @@ class Program
 {
     static void Main(string[] args)
     {
-        // RUTA BASE (Ajustala a tu home o donde esté el juego)
-        string baseLogPath = "/var/home/borgo/hearthstone-linux/hearthstone/Logs";
+        var baseLogPath = args.FirstOrDefault() ?? "/var/home/borgo/hearthstone-linux/hearthstone/Logs";
 
-        // Buscamos la carpeta de fecha más reciente
+        if (!Directory.Exists(baseLogPath))
+        {
+            Console.WriteLine($"[ERROR] No existe el directorio base de logs: {baseLogPath}");
+            return;
+        }
+
         string? latestLogDir = Directory.GetDirectories(baseLogPath)
-            .OrderByDescending(d => d) // Asumimos formato YYYY-MM-DD para que ordene bien
+            .OrderByDescending(d => d)
             .FirstOrDefault();
 
         if (latestLogDir == null || !Directory.Exists(latestLogDir))
@@ -26,18 +30,32 @@ class Program
         var watcher = new LogFileWatcher(info, latestLogDir);
         var bgHandler = new BattlegroundsHandler();
 
-        Console.WriteLine($"--- Backend Activo ---");
+        bgHandler.BattlegroundsDetected += () => Console.WriteLine("\n[SISTEMA] ¡Partida de Battlegrounds Detectada!");
+        bgHandler.TavernTierChanged += tier => Console.WriteLine($"[TABERNA] Cambio de estado: Nivel {tier}");
+        bgHandler.RecruitmentPhaseStarted += () => Console.WriteLine("[FASE] Fase de Reclutamiento (Tienda abierta)");
+
+        Console.WriteLine("--- Backend Activo ---");
         Console.WriteLine($"[INFO] Monitoreando logs en: {latestLogDir}");
-        
+        Console.WriteLine("[INFO] Presioná Ctrl+C para salir");
+
         watcher.Start(DateTime.Now, latestLogDir);
 
-        while (true)
+        var keepRunning = true;
+        Console.CancelKeyPress += (_, e) =>
+        {
+            e.Cancel = true;
+            keepRunning = false;
+            watcher.Stop();
+        };
+
+        while (keepRunning)
         {
             if (watcher.Lines.TryDequeue(out var line))
-            {
                 bgHandler.Handle(line.LineContent);
-            }
-            Thread.Sleep(10); 
+
+            Thread.Sleep(10);
         }
+
+        Console.WriteLine("[INFO] Backend detenido.");
     }
 }
