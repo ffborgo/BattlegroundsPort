@@ -16,7 +16,6 @@ namespace HearthWatcher.LogReader
 		private ConcurrentQueue<LogLine> _lines = new ConcurrentQueue<LogLine>();
 		public ConcurrentQueue<LogLine> Lines => _lines;
 		private long _offset;
-		private bool _running;
 		private bool _stop;
 		private Thread? _thread;
 
@@ -39,7 +38,6 @@ namespace HearthWatcher.LogReader
 
 		private void ReadLogFile()
 		{
-			_running = true;
 			while (!_stop)
 			{
 				var filePath = Path.Combine(_logDir, Info.Name + ".log");
@@ -64,7 +62,6 @@ namespace HearthWatcher.LogReader
 				}
 				Thread.Sleep(100);
 			}
-			_running = false;
 		}
 	}
 }
